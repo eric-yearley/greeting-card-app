@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greeting Card Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #8B0000;
+            --primary-light: #C41E3A;
+            --accent: #FFD700;
+            --secondary: #165B33;
+            --secondary-light: #146B3A;
+            --card-bg: rgba(20, 20, 30, 0.95);
+            --text-light: #FFFAFA;
+            --text-muted: #B8B8B8;
+        }
+
+        /* Theme variations */
+        [data-theme="christmas"] {
+            --primary: #8B0000;
+            --primary-light: #C41E3A;
+            --accent: #FFD700;
+            --secondary: #165B33;
+            --secondary-light: #146B3A;
+        }
+        [data-theme="birthday"] {
+            --primary: #E91E63;
+            --primary-light: #F06292;
+            --accent: #FFD700;
+            --secondary: #9C27B0;
+            --secondary-light: #BA68C8;
+        }
+        [data-theme="valentines"] {
+            --primary: #D32F2F;
+            --primary-light: #EF5350;
+            --accent: #FFB6C1;
+            --secondary: #880E4F;
+            --secondary-light: #AD1457;
+        }
+        [data-theme="thanksgiving"] {
+            --primary: #E65100;
+            --primary-light: #FF9800;
+            --accent: #FFD700;
+            --secondary: #795548;
+            --secondary-light: #8D6E63;
+        }
+        [data-theme="newyear"] {
+            --primary: #1A237E;
+            --primary-light: #3949AB;
+            --accent: #FFD700;
+            --secondary: #4A148C;
+            --secondary-light: #7B1FA2;
+        }
+        [data-theme="easter"] {
+            --primary: #7B1FA2;
+            --primary-light: #9C27B0;
+            --accent: #FFEB3B;
+            --secondary: #4CAF50;
+            --secondary-light: #66BB6A;
+        }
+        [data-theme="hanukkah"] {
+            --primary: #1565C0;
+            --primary-light: #1976D2;
+            --accent: #FFD700;
+            --secondary: #0D47A1;
+            --secondary-light: #1976D2;
+        }
+        [data-theme="general"] {
+            --primary: #37474F;
+            --primary-light: #546E7A;
+            --accent: #26A69A;
+            --secondary: #455A64;
+            --secondary-light: #607D8B;
+        }
+
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            background: linear-gradient(135deg, #0a1628 0%, #1a0a0a 50%, #0a1628 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Snow Effect */
+        .snowflakes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .snowflake {
+            position: absolute;
+            top: -10px;
+            color: white;
+            font-size: 1em;
+            text-shadow: 0 0 5px rgba(255,255,255,0.5);
+            animation: fall linear infinite;
+            opacity: 0.8;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(-10px) rotate(0deg);
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+            }
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5), 0 0 30px rgba(255,215,0,0.3);
+            font-weight: normal;
+            letter-spacing: 2px;
+        }
+
+        h1::before, h1::after {
+            content: attr(data-emoji);
+            margin: 0 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-style: italic;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 40px rgba(139, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: var(--accent);
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--secondary);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: var(--text-light);
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23FFD700' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            padding-right: 2.5rem;
+        }
+
+        select option {
+            background: #1a1a2e;
+            color: var(--text-light);
+        }
+
+        input[type="text"]:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(255,215,0,0.3);
+        }
+
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .upload-area {
+            border: 3px dashed var(--secondary);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(22, 91, 51, 0.1);
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent);
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .upload-area.has-image {
+            padding: 1rem;
+            border-style: solid;
+        }
+
+        .upload-area img {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            color: var(--text-muted);
+        }
+
+        .upload-text strong {
+            color: var(--accent);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1.2rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            box-shadow: 0 5px 20px rgba(139, 0, 0, 0.5);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(139, 0, 0, 0.7);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-light) 100%);
+            color: white;
+            box-shadow: 0 5px 20px rgba(22, 91, 51, 0.5);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(22, 91, 51, 0.7);
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, #B8860B 0%, var(--accent) 100%);
+            color: #1a0a0a;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255, 215, 0, 0.6);
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .result-container {
+            display: none;
+        }
+
+        .result-container.visible {
+            display: block;
+        }
+
+        .result-image {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .error-message {
+            background: rgba(139, 0, 0, 0.2);
+            border: 2px solid var(--primary);
+            color: #ff6b6b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+            text-align: center;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        /* 3D Preview Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.visible {
+            display: flex;
+        }
+
+        .modal-content {
+            position: relative;
+            width: 90%;
+            max-width: 900px;
+            height: 80vh;
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 2px solid var(--accent);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            background: rgba(0,0,0,0.5);
+            border-bottom: 1px solid var(--accent);
+        }
+
+        .modal-title {
+            color: var(--accent);
+            font-size: 1.3rem;
+        }
+
+        .modal-close {
+            background: var(--primary);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-close:hover {
+            background: var(--primary-light);
+            transform: scale(1.1);
+        }
+
+        #three-canvas {
+            width: 100%;
+            height: calc(100% - 60px);
+        }
+
+        .controls-hint {
+            position: absolute;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        footer {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            padding-bottom: 2rem;
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .greeting-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .preset-btn {
+            padding: 0.4rem 0.8rem;
+            background: rgba(22, 91, 51, 0.3);
+            border: 1px solid var(--secondary);
+            border-radius: 20px;
+            color: var(--text-light);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .preset-btn:hover {
+            background: var(--secondary);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            h1::before, h1::after {
+                display: none;
+            }
+            .button-row {
+                grid-template-columns: 1fr;
+            }
+            .btn {
+                padding: 1rem;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Snow Effect -->
+    <div class="snowflakes" id="snowflakes"></div>
+
+    <div class="container">
+        <header>
+            <h1 id="page-title">Greeting Card</h1>
+            <p class="subtitle">Create a magical personalized card with AI</p>
+        </header>
+
+        <div class="card">
+            <div class="form-group">
+                <label>Occasion</label>
+                <select id="occasion-select">
+                    <option value="christmas">Christmas</option>
+                    <option value="birthday">Birthday</option>
+                    <option value="valentines">Valentine's Day</option>
+                    <option value="thanksgiving">Thanksgiving</option>
+                    <option value="newyear">New Year</option>
+                    <option value="easter">Easter</option>
+                    <option value="hanukkah">Hanukkah</option>
+                    <option value="general">General / Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Upload Your Photo</label>
+                <div id="upload-area" class="upload-area">
+                    <div class="upload-icon">📸</div>
+                    <p class="upload-text"><strong>Click to upload</strong> or drag and drop</p>
+                    <p class="upload-text" style="font-size: 0.85rem; margin-top: 0.5rem;">Your photo will be magically transformed!</p>
+                </div>
+                <input type="file" id="file-input" accept="image/*">
+            </div>
+
+            <div class="form-group">
+                <label>Recipient's Name (Optional)</label>
+                <input type="text" id="recipient-name" placeholder="e.g., Mom, Dad, Sarah...">
+            </div>
+
+            <div class="form-group">
+                <label>Your Name</label>
+                <input type="text" id="sender-name" placeholder="e.g., John, The Smith Family...">
+            </div>
+
+            <div class="form-group">
+                <label>Greeting Message</label>
+                <textarea id="greeting" placeholder="Enter your greeting message..."></textarea>
+                <div class="greeting-presets" id="greeting-presets">
+                    <!-- Presets populated by JavaScript based on occasion -->
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Special Instructions (Optional)</label>
+                <textarea id="custom-instructions" placeholder="Add any special requests... e.g., 'Make the background more snowy', 'Add a dog', 'Use a cabin setting instead of outdoors'"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>AI Model</label>
+                <select id="model-select">
+                    <option value="gemini-2.5-flash-image">Nano Banana (Fast)</option>
+                    <option value="gemini-3-pro-image-preview">Nano Banana Pro (Higher Quality)</option>
+                </select>
+            </div>
+
+            <button id="generate-btn" class="btn btn-primary" disabled>
+                <span class="btn-text">🎁 Create My Card</span>
+            </button>
+        </div>
+
+        <div class="error-message" id="error"></div>
+
+        <div class="result-container card" id="result">
+            <h3 id="result-title" style="color: var(--accent); margin-bottom: 1rem; text-align: center;">✨ Your Card ✨</h3>
+            <img id="result-image" class="result-image" alt="Generated Christmas card">
+            <div class="button-row">
+                <button id="preview-3d-btn" class="btn btn-gold">
+                    🎄 View 3D
+                </button>
+                <button id="edit-btn" class="btn btn-primary">
+                    ✏️ Edit
+                </button>
+                <button id="recreate-btn" class="btn btn-secondary">
+                    🔄 Recreate
+                </button>
+                <button id="download-btn" class="btn btn-secondary">
+                    📥 Download
+                </button>
+            </div>
+        </div>
+
+        <footer>
+            <p>Powered by Google Gemini AI ✨</p>
+        </footer>
+    </div>
+
+    <!-- 3D Preview Modal -->
+    <div class="modal" id="modal-3d">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">🎄 3D Card Preview</h3>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div id="three-canvas"></div>
+            <div class="controls-hint">🖱️ Drag to rotate • Scroll to zoom</div>
+        </div>
+    </div>
+
+    <script>
+        // ============ OCCASION DATA ============
+        const occasions = {
+            christmas: {
+                title: 'Christmas Card',
+                emoji: '🎄',
+                particles: ['❄', '❅', '❆', '•'],
+                greetings: [
+                    { label: 'Classic', text: 'Wishing you a Merry Christmas and a Happy New Year!' },
+                    { label: 'Warm', text: 'May your holidays be filled with warmth, joy, and love!' },
+                    { label: 'Blessings', text: "Here's to a season of blessings and a new year of happiness!" },
+                    { label: 'With Love', text: 'Sending you all my love this Christmas season!' }
+                ]
+            },
+            birthday: {
+                title: 'Birthday Card',
+                emoji: '🎂',
+                particles: ['🎈', '🎉', '✨', '🎁'],
+                greetings: [
+                    { label: 'Classic', text: 'Wishing you a wonderful birthday filled with joy!' },
+                    { label: 'Celebrate', text: 'Hope your special day is amazing in every way!' },
+                    { label: 'Best Wishes', text: 'May all your birthday wishes come true!' },
+                    { label: 'Cheers', text: "Here's to another year of wonderful memories!" }
+                ]
+            },
+            valentines: {
+                title: "Valentine's Card",
+                emoji: '💕',
+                particles: ['❤', '💕', '💖', '✨'],
+                greetings: [
+                    { label: 'Classic', text: 'Happy Valentine\'s Day to someone special!' },
+                    { label: 'Love', text: 'You mean the world to me. Happy Valentine\'s Day!' },
+                    { label: 'Sweet', text: 'Sending you all my love on this special day!' },
+                    { label: 'Forever', text: 'You have my heart today and always.' }
+                ]
+            },
+            thanksgiving: {
+                title: 'Thanksgiving Card',
+                emoji: '🦃',
+                particles: ['🍂', '🍁', '🌾', '✨'],
+                greetings: [
+                    { label: 'Classic', text: 'Wishing you a Happy Thanksgiving filled with gratitude!' },
+                    { label: 'Grateful', text: 'So thankful to have you in my life. Happy Thanksgiving!' },
+                    { label: 'Blessings', text: 'May your Thanksgiving be blessed with love and joy!' },
+                    { label: 'Warm', text: 'Sending warm wishes for a wonderful Thanksgiving!' }
+                ]
+            },
+            newyear: {
+                title: 'New Year Card',
+                emoji: '🎆',
+                particles: ['✨', '🎆', '🎇', '⭐'],
+                greetings: [
+                    { label: 'Classic', text: 'Happy New Year! Wishing you joy and success!' },
+                    { label: 'Cheers', text: "Here's to new beginnings and wonderful adventures!" },
+                    { label: 'Best Wishes', text: 'May the new year bring you happiness and prosperity!' },
+                    { label: 'Fresh Start', text: 'Cheers to a fresh start and amazing opportunities!' }
+                ]
+            },
+            easter: {
+                title: 'Easter Card',
+                emoji: '🐰',
+                particles: ['🌸', '🐣', '🌷', '✨'],
+                greetings: [
+                    { label: 'Classic', text: 'Wishing you a joyful Easter filled with blessings!' },
+                    { label: 'Spring', text: 'May your Easter be as bright as spring flowers!' },
+                    { label: 'Blessings', text: 'Easter blessings to you and your family!' },
+                    { label: 'Joy', text: 'Hoping your Easter is filled with joy and renewal!' }
+                ]
+            },
+            hanukkah: {
+                title: 'Hanukkah Card',
+                emoji: '🕎',
+                particles: ['✡', '✨', '💙', '⭐'],
+                greetings: [
+                    { label: 'Classic', text: 'Wishing you a Happy Hanukkah filled with light!' },
+                    { label: 'Light', text: 'May the Festival of Lights bring you joy and peace!' },
+                    { label: 'Blessings', text: 'Hanukkah blessings to you and your loved ones!' },
+                    { label: 'Warm', text: 'Wishing you eight nights of happiness and light!' }
+                ]
+            },
+            general: {
+                title: 'Greeting Card',
+                emoji: '💌',
+                particles: ['✨', '⭐', '💫', '•'],
+                greetings: [
+                    { label: 'Thinking of You', text: 'Just wanted you to know I\'m thinking of you!' },
+                    { label: 'Best Wishes', text: 'Sending you my warmest wishes!' },
+                    { label: 'With Love', text: 'With love and warm thoughts your way!' },
+                    { label: 'Celebrate', text: 'Wishing you all the best on this special occasion!' }
+                ]
+            }
+        };
+
+        // ============ PARTICLE EFFECT ============
+        let currentParticles = [];
+        function createParticles(chars) {
+            const container = document.getElementById('snowflakes');
+            container.innerHTML = '';
+            currentParticles = [];
+
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'snowflake';
+                particle.innerHTML = chars[Math.floor(Math.random() * chars.length)];
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDuration = (Math.random() * 5 + 5) + 's';
+                particle.style.animationDelay = Math.random() * 10 + 's';
+                particle.style.fontSize = (Math.random() * 1 + 0.5) + 'em';
+                particle.style.opacity = Math.random() * 0.6 + 0.4;
+                container.appendChild(particle);
+                currentParticles.push(particle);
+            }
+        }
+
+        // ============ STATE ============
+        let uploadedImage = null;
+        let generatedCardImage = null;
+        let currentOccasion = 'christmas';
+
+        // ============ ELEMENTS ============
+        const generateBtn = document.getElementById('generate-btn');
+        const preview3dBtn = document.getElementById('preview-3d-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const recipientInput = document.getElementById('recipient-name');
+        const senderInput = document.getElementById('sender-name');
+        const greetingInput = document.getElementById('greeting');
+        const greetingPresetsContainer = document.getElementById('greeting-presets');
+        const customInstructions = document.getElementById('custom-instructions');
+        const modelSelect = document.getElementById('model-select');
+        const occasionSelect = document.getElementById('occasion-select');
+        const pageTitle = document.getElementById('page-title');
+        const resultContainer = document.getElementById('result');
+        const resultImage = document.getElementById('result-image');
+        const errorDiv = document.getElementById('error');
+        const modal3d = document.getElementById('modal-3d');
+        const modalClose = document.getElementById('modal-close');
+
+        // ============ OCCASION HANDLING ============
+        function updateOccasion(occasionKey) {
+            currentOccasion = occasionKey;
+            const occasion = occasions[occasionKey];
+
+            // Update theme
+            document.documentElement.setAttribute('data-theme', occasionKey);
+
+            // Update title and emoji
+            pageTitle.textContent = occasion.title;
+            pageTitle.setAttribute('data-emoji', occasion.emoji);
+
+            // Update particles
+            createParticles(occasion.particles);
+
+            // Update greeting presets
+            greetingPresetsContainer.innerHTML = '';
+            occasion.greetings.forEach((g, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'preset-btn';
+                btn.textContent = g.label;
+                btn.addEventListener('click', () => {
+                    greetingInput.value = g.text;
+                });
+                greetingPresetsContainer.appendChild(btn);
+
+                // Set first greeting as default
+                if (index === 0) {
+                    greetingInput.value = g.text;
+                    greetingInput.placeholder = g.text;
+                }
+            });
+        }
+
+        occasionSelect.addEventListener('change', (e) => {
+            updateOccasion(e.target.value);
+        });
+
+        // Initialize with default occasion
+        updateOccasion('christmas');
+
+        // ============ FILE UPLOAD ============
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = 'var(--accent)';
+            uploadArea.style.background = 'rgba(255, 215, 0, 0.1)';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '';
+            uploadArea.style.background = '';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '';
+            uploadArea.style.background = '';
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleFileUpload(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        function handleFileUpload(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImage = e.target.result;
+                uploadArea.innerHTML = `<img src="${uploadedImage}" alt="Your selfie">`;
+                uploadArea.classList.add('has-image');
+                generateBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ============ GENERATE CARD ============
+        generateBtn.addEventListener('click', async () => {
+            if (!uploadedImage) {
+                showError('Please upload a selfie first!');
+                return;
+            }
+
+            setLoading(true);
+            hideError();
+            hideResult();
+
+            try {
+                const response = await fetch('/api/generate-card', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        selfieBase64: uploadedImage,
+                        recipientName: recipientInput.value.trim(),
+                        senderName: senderInput.value.trim(),
+                        greeting: greetingInput.value.trim() || occasions[currentOccasion].greetings[0].text,
+                        customInstructions: customInstructions.value.trim(),
+                        occasion: currentOccasion,
+                        model: modelSelect.value
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                generatedCardImage = result.image;
+                showResult(result.image);
+            } catch (error) {
+                showError(error.message || 'Failed to generate card. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function setLoading(loading) {
+            const btnText = generateBtn.querySelector('.btn-text');
+            if (loading) {
+                generateBtn.disabled = true;
+                btnText.innerHTML = '<div class="spinner"></div> Creating Magic...';
+            } else {
+                generateBtn.disabled = !uploadedImage;
+                btnText.innerHTML = '🎁 Create My Card';
+            }
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.classList.add('visible');
+        }
+
+        function hideError() {
+            errorDiv.classList.remove('visible');
+        }
+
+        function showResult(imageData) {
+            resultImage.src = imageData;
+            resultContainer.classList.add('visible');
+            resultContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hideResult() {
+            resultContainer.classList.remove('visible');
+        }
+
+        // ============ DOWNLOAD ============
+        downloadBtn.addEventListener('click', () => {
+            if (generatedCardImage) {
+                const link = document.createElement('a');
+                link.download = `christmas-card-${Date.now()}.png`;
+                link.href = generatedCardImage;
+                link.click();
+            }
+        });
+
+        // ============ EDIT CARD (modify existing) ============
+        const editBtn = document.getElementById('edit-btn');
+        editBtn.addEventListener('click', async () => {
+            const editInstructions = prompt('What changes would you like to make to this card?\n\nExamples:\n• "Add more snow"\n• "Make the lighting warmer"\n• "Add a wreath to the door"\n• "Change the text to say Happy Holidays"');
+
+            if (!editInstructions || !editInstructions.trim()) return;
+
+            setLoading(true);
+            hideError();
+
+            try {
+                const response = await fetch('/api/edit-card', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        cardBase64: generatedCardImage,
+                        editInstructions: editInstructions.trim(),
+                        model: modelSelect.value
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                generatedCardImage = result.image;
+                showResult(result.image);
+            } catch (error) {
+                showError(error.message || 'Failed to edit card. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // ============ RECREATE CARD (start fresh) ============
+        const recreateBtn = document.getElementById('recreate-btn');
+        recreateBtn.addEventListener('click', () => {
+            // Scroll to the form
+            document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+            // Focus on custom instructions after scroll
+            setTimeout(() => {
+                customInstructions.focus();
+                customInstructions.placeholder = 'Add any changes for the new version... or leave blank to regenerate fresh';
+            }, 500);
+        });
+
+        // ============ 3D PREVIEW ============
+        let scene, camera, renderer, cardGroup;
+        let isAnimating = false;
+
+        preview3dBtn.addEventListener('click', () => {
+            if (generatedCardImage) {
+                modal3d.classList.add('visible');
+                init3DScene();
+            }
+        });
+
+        modalClose.addEventListener('click', () => {
+            modal3d.classList.remove('visible');
+            if (renderer) {
+                renderer.dispose();
+            }
+        });
+
+        function init3DScene() {
+            const container = document.getElementById('three-canvas');
+            container.innerHTML = '';
+
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a1628);
+
+            // Camera
+            const aspect = container.clientWidth / container.clientHeight;
+            camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+            camera.position.set(0, 0, 5);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+
+            const warmLight = new THREE.PointLight(0xFFD700, 0.5, 10);
+            warmLight.position.set(-2, 2, 3);
+            scene.add(warmLight);
+
+            // Load texture and create card
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(generatedCardImage, (texture) => {
+                createCard(texture);
+                animate();
+            });
+
+            // Mouse controls
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (!isDragging || !cardGroup) return;
+
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                cardGroup.rotation.y += deltaX * 0.01;
+                cardGroup.rotation.x += deltaY * 0.01;
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            container.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            container.addEventListener('mouseleave', () => {
+                isDragging = false;
+            });
+
+            // Zoom
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z += e.deltaY * 0.01;
+                camera.position.z = Math.max(2, Math.min(10, camera.position.z));
+            });
+        }
+
+        function createCard(texture) {
+            cardGroup = new THREE.Group();
+
+            const cardWidth = 2;
+            const cardHeight = 1.5;
+
+            // Front cover (left half of texture) - rotates from the center
+            const frontGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
+
+            // UV mapping for front (left half: 0 to 0.5)
+            const frontUVs = frontGeometry.attributes.uv;
+            for (let i = 0; i < frontUVs.count; i++) {
+                const u = frontUVs.getX(i);
+                frontUVs.setX(i, u * 0.5); // Map to left half
+            }
+
+            const frontMaterial = new THREE.MeshStandardMaterial({
+                map: texture,
+                side: THREE.DoubleSide
+            });
+            const frontCover = new THREE.Mesh(frontGeometry, frontMaterial);
+            frontCover.position.x = -cardWidth / 2;
+
+            // Inside panel (right half of texture) - stationary
+            const insideGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
+
+            // UV mapping for inside (right half: 0.5 to 1)
+            const insideUVs = insideGeometry.attributes.uv;
+            for (let i = 0; i < insideUVs.count; i++) {
+                const u = insideUVs.getX(i);
+                insideUVs.setX(i, 0.5 + u * 0.5); // Map to right half
+            }
+
+            const insideMaterial = new THREE.MeshStandardMaterial({
+                map: texture,
+                side: THREE.DoubleSide
+            });
+            const insidePanel = new THREE.Mesh(insideGeometry, insideMaterial);
+            insidePanel.position.x = cardWidth / 2;
+
+            // Create hinge group for front cover
+            const hingeGroup = new THREE.Group();
+            frontCover.position.x = cardWidth / 2; // Position relative to hinge
+            hingeGroup.add(frontCover);
+            hingeGroup.position.x = 0; // Hinge at center
+            hingeGroup.rotation.y = -Math.PI * 0.4; // Open at ~72 degrees
+
+            cardGroup.add(insidePanel);
+            cardGroup.add(hingeGroup);
+
+            // Center the card
+            cardGroup.position.x = -cardWidth / 2;
+
+            scene.add(cardGroup);
+
+            // Add particle effects
+            addParticles();
+        }
+
+        function addParticles() {
+            const particleCount = 100;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 10;
+                positions[i + 1] = (Math.random() - 0.5) * 10;
+                positions[i + 2] = (Math.random() - 0.5) * 10;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const material = new THREE.PointsMaterial({
+                color: 0xFFFFFF,
+                size: 0.05,
+                transparent: true,
+                opacity: 0.6
+            });
+
+            const particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+        }
+
+        function animate() {
+            if (!modal3d.classList.contains('visible')) return;
+
+            requestAnimationFrame(animate);
+
+            // Gentle automatic rotation when not dragging
+            if (cardGroup) {
+                cardGroup.rotation.y += 0.002;
+            }
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
