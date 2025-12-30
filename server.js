@@ -13,15 +13,13 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Check for API key
-if (!process.env.GOOGLE_API_KEY) {
-    console.error("Error: GOOGLE_API_KEY not set in .env file");
-    console.error("1. Copy .env.example to .env");
-    console.error("2. Add your API key from https://aistudio.google.com/apikey");
-    process.exit(1);
+// Helper to get AI client with user's API key
+function getAIClient(apiKey) {
+    if (!apiKey) {
+        throw new Error("API key is required. Get one at https://aistudio.google.com/apikey");
+    }
+    return new GoogleGenAI({ apiKey });
 }
-
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 
 // Occasion-specific prompt configurations
 const occasionConfigs = {
@@ -106,13 +104,15 @@ app.post("/api/generate-card", async (req, res) => {
             greeting = "",
             customInstructions = "",
             occasion = "christmas",
-            model = "gemini-2.5-flash-image"
+            model = "gemini-2.5-flash-image",
+            apiKey
         } = req.body;
 
         if (!selfieBase64) {
             return res.status(400).json({ error: "Photo is required" });
         }
 
+        const ai = getAIClient(apiKey);
         const config = occasionConfigs[occasion] || occasionConfigs.general;
         const defaultGreeting = greeting || `Wishing you a wonderful ${config.name}!`;
 
@@ -203,7 +203,8 @@ app.post("/api/edit-card", async (req, res) => {
         const {
             cardBase64,
             editInstructions,
-            model = "gemini-2.5-flash-image"
+            model = "gemini-2.5-flash-image",
+            apiKey
         } = req.body;
 
         if (!cardBase64) {
@@ -213,6 +214,8 @@ app.post("/api/edit-card", async (req, res) => {
         if (!editInstructions) {
             return res.status(400).json({ error: "Edit instructions are required" });
         }
+
+        const ai = getAIClient(apiKey);
 
         console.log(`Editing card: "${editInstructions.substring(0, 50)}..."`);
         console.log(`Model: ${model}`);
@@ -275,70 +278,20 @@ IMPORTANT:
     }
 });
 
-// Legacy generate endpoint (kept for compatibility)
-app.post("/api/generate", async (req, res) => {
-    try {
-        const {
-            prompt,
-            model = "gemini-2.5-flash-image",
-            aspectRatio = "1:1",
-            imageSize
-        } = req.body;
-
-        if (!prompt) {
-            return res.status(400).json({ error: "Prompt is required" });
-        }
-
-        console.log(`Generating image: "${prompt.substring(0, 50)}..."`);
-        console.log(`Model: ${model}, Aspect: ${aspectRatio}`);
-
-        const config = {
-            responseModalities: ["IMAGE"],
-            imageGenerationConfig: {
-                aspectRatio
-            }
-        };
-
-        const response = await ai.models.generateContent({
-            model,
-            contents: prompt,
-            config
-        });
-
-        const parts = response.candidates?.[0]?.content?.parts || [];
-        for (const part of parts) {
-            if (part.inlineData) {
-                console.log("Image generated successfully");
-                return res.json({
-                    success: true,
-                    image: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`
-                });
-            }
-        }
-
-        console.error("No image in response");
-        res.status(500).json({ error: "No image generated" });
-
-    } catch (error) {
-        console.error("Generation error:", error.message);
-        res.status(500).json({ error: error.message || "Failed to generate image" });
-    }
-});
-
 // Health check
 app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", model: "Greeting Card Generator ready" });
+    res.json({ status: "ok", message: "Greeting Card Generator ready (BYOAPI)" });
 });
 
 app.listen(PORT, () => {
     console.log(`
-╔══════════════════════════════════════════════════════╗
-║      ✨ Greeting Card Generator ✨                   ║
-╠══════════════════════════════════════════════════════╣
-║  Server running at: http://localhost:${PORT}             ║
-║  API endpoints:                                      ║
-║    POST /api/generate-card - Generate greeting card  ║
-║    POST /api/edit-card     - Edit existing card      ║
-╚══════════════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════╗
+║      ✨ Greeting Card Generator ✨                        ║
+║              ~ Bring Your Own API Key ~                   ║
+╠═══════════════════════════════════════════════════════════╣
+║  Server running at: http://localhost:${PORT}                  ║
+║  Users provide their own Google API key                   ║
+║  Get a key at: https://aistudio.google.com/apikey         ║
+╚═══════════════════════════════════════════════════════════╝
     `);
 });

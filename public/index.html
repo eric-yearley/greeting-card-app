@@ -507,6 +507,19 @@
             <p class="subtitle">Create a magical personalized card with AI</p>
         </header>
 
+        <div class="card" id="api-key-card">
+            <div class="form-group">
+                <label>Google API Key <a href="https://aistudio.google.com/apikey" target="_blank" style="color: var(--accent); font-size: 0.8rem; text-transform: none;">(Get one free)</a></label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="password" id="api-key" placeholder="Paste your API key or upload a file..." style="flex: 1;">
+                    <button type="button" id="toggle-key-visibility" class="preset-btn" style="padding: 0.8rem; white-space: nowrap;">Show</button>
+                    <label for="api-key-file" class="preset-btn" style="padding: 0.8rem; cursor: pointer; white-space: nowrap;">Upload</label>
+                    <input type="file" id="api-key-file" accept=".txt,.env" style="display: none;">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Your key is stored locally and never sent to our servers - only to Google's API.</p>
+            </div>
+        </div>
+
         <div class="card">
             <div class="form-group">
                 <label>Occasion</label>
@@ -607,6 +620,60 @@
     </div>
 
     <script>
+        // ============ API KEY HANDLING ============
+        const apiKeyInput = document.getElementById('api-key');
+        const apiKeyFile = document.getElementById('api-key-file');
+        const toggleKeyBtn = document.getElementById('toggle-key-visibility');
+
+        // Load saved API key from localStorage
+        const savedApiKey = localStorage.getItem('gemini_api_key');
+        if (savedApiKey) {
+            apiKeyInput.value = savedApiKey;
+        }
+
+        // Save API key when changed
+        apiKeyInput.addEventListener('change', () => {
+            localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
+        });
+
+        // Toggle visibility
+        toggleKeyBtn.addEventListener('click', () => {
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                toggleKeyBtn.textContent = 'Hide';
+            } else {
+                apiKeyInput.type = 'password';
+                toggleKeyBtn.textContent = 'Show';
+            }
+        });
+
+        // File upload for API key
+        apiKeyFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    let content = event.target.result.trim();
+                    // Handle .env format (GOOGLE_API_KEY=xxx)
+                    const match = content.match(/(?:GOOGLE_API_KEY|API_KEY)\s*=\s*['"]?([^'"\n]+)['"]?/i);
+                    if (match) {
+                        content = match[1].trim();
+                    }
+                    apiKeyInput.value = content;
+                    localStorage.setItem('gemini_api_key', content);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function getApiKey() {
+            const key = apiKeyInput.value.trim();
+            if (!key) {
+                throw new Error('Please enter your Google API key first');
+            }
+            return key;
+        }
+
         // ============ OCCASION DATA ============
         const occasions = {
             christmas: {
@@ -830,7 +897,15 @@
         // ============ GENERATE CARD ============
         generateBtn.addEventListener('click', async () => {
             if (!uploadedImage) {
-                showError('Please upload a selfie first!');
+                showError('Please upload a photo first!');
+                return;
+            }
+
+            let apiKey;
+            try {
+                apiKey = getApiKey();
+            } catch (e) {
+                showError(e.message);
                 return;
             }
 
@@ -849,7 +924,8 @@
                         greeting: greetingInput.value.trim() || occasions[currentOccasion].greetings[0].text,
                         customInstructions: customInstructions.value.trim(),
                         occasion: currentOccasion,
-                        model: modelSelect.value
+                        model: modelSelect.value,
+                        apiKey
                     })
                 });
 
@@ -911,6 +987,14 @@
         // ============ EDIT CARD (modify existing) ============
         const editBtn = document.getElementById('edit-btn');
         editBtn.addEventListener('click', async () => {
+            let apiKey;
+            try {
+                apiKey = getApiKey();
+            } catch (e) {
+                showError(e.message);
+                return;
+            }
+
             const editInstructions = prompt('What changes would you like to make to this card?\n\nExamples:\n• "Add more snow"\n• "Make the lighting warmer"\n• "Add a wreath to the door"\n• "Change the text to say Happy Holidays"');
 
             if (!editInstructions || !editInstructions.trim()) return;
@@ -925,7 +1009,8 @@
                     body: JSON.stringify({
                         cardBase64: generatedCardImage,
                         editInstructions: editInstructions.trim(),
-                        model: modelSelect.value
+                        model: modelSelect.value,
+                        apiKey
                     })
                 });
 

@@ -1,7 +1,7 @@
 {
-  "name": "nano-banana-app",
+  "name": "greeting-card-generator",
   "version": "1.0.0",
-  "description": "Image generator using Google Gemini API (Nano Banana Pro)",
+  "description": "AI-powered greeting card generator - Bring Your Own API Key",
   "main": "server.js",
   "type": "module",
   "scripts": {
